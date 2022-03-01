@@ -15,8 +15,8 @@ class Button:
         self.surface = pygame.Surface([self.width, self.height])
         self.surface.fill(self.color)
         self.font = pygame.font.Font('assets/fonts/Pixels.ttf', int(self.width / 1.5))
-        self.img = pygame.image.load("assets/textures/menu/cursor.png")
-        self.img = pygame.transform.scale(self.img, [128, 128]).convert_alpha()
+        self.img = pygame.image.load("assets/textures/menu/cursor.png").convert_alpha()
+        #self.img = pygame.transform.scale(self.img, [32, 32]).convert_alpha()
         self.text = text
 
     def draw(self, win):
@@ -30,7 +30,7 @@ class Button:
             win.blit(self.img, [self.x /2, self.y  ])
 
         if self.text != '':
-            text = self.font.render(self.text, 1, self.color)
+            text = self.font.render(self.text, 0, self.color)
             win.blit(text, (
                 self.x, self.y))
 

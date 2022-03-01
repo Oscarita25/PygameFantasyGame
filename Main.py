@@ -4,8 +4,8 @@ import Levels
 pg.init()
 
 
-resolution = (1000, 1000)
-display = pg.display.set_mode(resolution, flags=pg.RESIZABLE)
+resolution = (256, 256)
+display = pg.display.set_mode(resolution, flags=pg.SCALED | pg.RESIZABLE)
 
 clock = pg.time.Clock()
 

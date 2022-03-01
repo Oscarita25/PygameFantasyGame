@@ -31,6 +31,7 @@ isDebug = False
 
 ''' Settings '''
 MAX_FPS = 0
+ASPECT_RATIO = "1:1"
 
 '''Saved Data across scenes'''
 data = {
@@ -104,9 +105,9 @@ class Level:
         self.ticksLastFrame = 0
         self.frametime = 0
         self.fps = 0
-        self.font = pg.font.SysFont('Arial', 50)
-        self.s_delta = self.font.render(str(self.frametime), 1, (0, 0, 0))
-        self.s_fps = self.font.render(str(0), 1, (0, 0, 0))
+        self.font = pg.font.SysFont('Arial',10)
+        self.s_delta = self.font.render(str(self.frametime), 0, (0, 0, 0))
+        self.s_fps = self.font.render(str(0), 0, (0, 0, 0))
 
     def calculatedelta(self):
         ticks = time.time_ns()
@@ -122,8 +123,8 @@ class Level:
         # update surface values
         self.s_delta = self.font.render(str(int(self.frametime * 1000)) + " ms", 0, color)
         self.s_fps = self.font.render(str(int(self.fps)) + " fps", 0, color)
-        display.blit(self.s_delta, [display.get_size()[0] - 200, display.get_size()[1] - 200])
-        display.blit(self.s_fps, [display.get_size()[0] - 200, display.get_size()[1] - 100])
+        display.blit(self.s_delta, [display.get_size()[0] - 32, display.get_size()[1] - 20])
+        display.blit(self.s_fps, [display.get_size()[0] - 32, display.get_size()[1] - 10])
 
     def cinematic_change(self, duration=1):
         # function for changing scenes cinematicly
@@ -192,14 +193,15 @@ class mainMenu(Level):
         Level.__init__(self)
         # list of buttons
         self.btn_lst = \
-            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 100, 200, 100,
+            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 25, 50, 25,
                         text='Start'),
-             Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 200, 200, 100,
+             Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 50, 50, 25,
                         text='Options'),
-             Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 300, 200, 100,
+             Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 75, 50, 25,
                         text='Quit')]
-        self.title = pg.image.load('assets/textures/menu/title.png')
-        self.title = pg.transform.scale(self.title, (768, 192)).convert_alpha()
+        self.title = pg.image.load('assets/textures/menu/title.png').convert_alpha()
+        self.title = pg.transform.scale(self.title,
+                                        (self.title.get_size()[0]*2, self.title.get_size()[1]*2)).convert_alpha()
         self.background = pg.image.load('assets/textures/menu/background.png').convert()
         self.background = pg.transform.scale(self.background, display.get_size()).convert()
 
@@ -231,9 +233,11 @@ class mainMenu(Level):
                         self.terminate()
 
             if e.type == pg.VIDEORESIZE:
+
                 for button in self.btn_lst:
                     button.x = display.get_size()[0] / 2 - button.width / 2
-                    self.background = pg.transform.scale(self.background, display.get_size()).convert()
+
+                self.background = pg.transform.scale(self.background, display.get_size()).convert()
 
         for button in self.btn_lst:
             button.Hover(mouse_pos, Colors.MAGENTA)
@@ -262,10 +266,13 @@ class optionMenu(Level):
         Level.__init__(self)
         # list of buttons
         self.btn_lst = \
-            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 100, 200, 100,
-                        text='Back')]
+            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 25, 50, 25,
+                        text='Back'),
+             Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 50, 50, 25,
+                        text=f"Aspect Ratio: {ASPECT_RATIO}")]
         self.title = pg.image.load('assets/textures/menu/title.png')
-        self.title = pg.transform.scale(self.title, (768, 192)).convert_alpha()
+        self.title = pg.transform.scale(self.title,
+                                        (self.title.get_size()[0] * 2, self.title.get_size()[1] * 2)).convert_alpha()
         self.title_xy = [display.get_size()[0] / 2 - self.title.get_size()[0] / 2,
                          display.get_size()[1] / 4 - self.title.get_size()[1] / 2]
         self.background = pg.image.load('assets/textures/menu/background.png').convert()
@@ -298,12 +305,29 @@ class optionMenu(Level):
                     if e.button == 1:
                         if self.btn_lst[0].isHover:
                             self.next_scene(mainMenu())
+                        if self.btn_lst[1].isHover:
+                            global display
+                            global ASPECT_RATIO
+                            if ASPECT_RATIO == "1:1":
+                                display = pg.display.set_mode(
+                                    [256 *  1.78,
+                                     256 * 1], flags=pg.SCALED | pg.RESIZABLE)
+                                ASPECT_RATIO = "16:9"
+                            else:
+                                display = pg.display.set_mode(
+                                    [256,
+                                     256], flags=pg.SCALED | pg.RESIZABLE)
+                                ASPECT_RATIO = "1:1"
+
+                            self.btn_lst[1].text = f"Aspect Ratio: {ASPECT_RATIO}"
+                            pg.event.post(pg.event.Event(pg.VIDEORESIZE))
 
                 if e.type == pg.VIDEORESIZE:
                     for button in self.btn_lst:
                         button.x = display.get_size()[0] / 2 - button.width / 2
-                        self.background = pg.transform.scale(self.background, display.get_size()).convert()
-                        self.title_xy = [display.get_size()[0] / 2 - self.title.get_size()[0] / 2, self.title_xy[1]]
+                    self.background = pg.transform.scale(self.background, display.get_size()).convert()
+                    self.title_xy = [display.get_size()[0] / 2 - self.title.get_size()[0] / 2, self.title_xy[1]]
+
 
             for button in self.btn_lst:
                 button.Hover(mouse_pos, Colors.MAGENTA)
@@ -379,11 +403,11 @@ class Level_00(Level):
 
         # list of buttons
         self.btn_lst = \
-            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 100, 200, 100,
+            [Obj.Button(Colors.BLACK, display.get_size()[0] / 2, display.get_size()[1] / 3 + 25, 50, 25,
                         text='Back')]
         self.btn_lst[0].isVisible = False
 
-        self.anim_states["anim_cinematic"] = 1
+        self.anim_states["anim_cinematic"] = 0
 
     def game(self):
         global isDebug
