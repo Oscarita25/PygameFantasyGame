@@ -9,6 +9,7 @@ class Button:
         self.color = color
         self.buffer_c = color
         self.isHover = False
+        self.isSelected = False
         self.isVisible = True
         self.width = width
         self.height = height
@@ -26,7 +27,7 @@ class Button:
         # Call this method to draw the button on the screen
         #self.surface.fill(self.color)
         #win.blit(self.surface, (self.x,  self.y))
-        if self.isHover:
+        if self.isHover or self.isSelected:
             win.blit(self.img, [self.x /2, self.y  ])
 
         if self.text != '':
@@ -35,8 +36,8 @@ class Button:
                 self.x, self.y))
 
     def Hover(self, pos, secondary_color):
-        if self.x < pos[0] < self.x + self.width:
-            if self.y < pos[1] < self.y + self.height:
+        if self.x < pos[0] < self.x + self.width or self.isSelected:
+            if self.y < pos[1] < self.y + self.height or self.isSelected:
                 self.color = secondary_color
                 self.isHover = True
                 return
