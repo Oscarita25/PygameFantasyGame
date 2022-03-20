@@ -45,6 +45,15 @@ vec = pygame.math.Vector2
 MAX_FPS = 0
 ASPECT_RATIO = "1:1"
 FULLSCREEN = "OFF"
+CONTROLS = None
+
+''' DEFAULT SETTINGS '''
+DEF_CONTROLS = {
+    "move_up": pg.K_UP,
+    "move_down": pg.K_DOWN,
+    "move_right": pg.K_RIGHT,
+    "move_left": pg.K_LEFT
+}
 
 ''' Aspect Ratio Muliplicator '''
 ASPC_MULT = 1
@@ -60,10 +69,14 @@ data = {
 tiles = {
 }
 
+
 def init(surface, clck):
     global display
     global clock
     global tiles
+    global CONTROLS
+    global DEF_CONTROLS
+
     display = surface
     clock = clck
 
@@ -71,6 +84,9 @@ def init(surface, clck):
         0: pg.image.load("assets/textures/tiles/grass.png").convert(),
         1: pg.image.load("assets/textures/tiles/stone.png").convert()
     }
+
+    if CONTROLS is None:
+        CONTROLS = DEF_CONTROLS
 
 
 def gen_mapsurf(map_dict):
@@ -215,20 +231,29 @@ class Player(pg.sprite.Sprite):
 
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.image.load("assets/textures/Player_Sprite.png")
+        self.image = pygame.image.load("assets/textures/Player_Sprite.png").convert_alpha()
         self.rect = self.image.get_rect()
 
-        #Position and Direction
+        # Position and Direction
         self.pos = vec(x, y)
         self.vel = vec(0, 0)
-        self.acc = vec(0, 0)
+        self.speed = 32
         self.direction = "DOWN"
 
     def move_p(self):
-        self.pos += self.vel
+        self.pos.update(self.pos + self.vel)
 
-    def update_p(self):
-        pass
+    def update_p(self, keys, delta):
+        if keys[CONTROLS["move_up"]]:
+            self.vel = vec(0, -self.speed * delta)
+        elif keys[CONTROLS["move_down"]]:
+            self.vel = vec(0, self.speed * delta)
+        elif keys[CONTROLS["move_right"]]:
+            self.vel = vec(self.speed * delta, 0)
+        elif keys[CONTROLS["move_left"]]:
+            self.vel = vec(-self.speed * delta, 0)
+        else:
+            self.vel = vec(0, 0)
 
     def jump_p(self):
         pass
@@ -307,16 +332,18 @@ class Level:
             # wait a specific amount of time
             # amount of seconds -> default 1
 
-            if self.counters["anim_cinematic_00"] + self.frametime <= duration:
+            if self.counters["anim_cinematic_00"] + self.frametime >= duration:
                 self.counters["anim_cinematic_00"] += self.frametime
                 self.counters["anim_cinematic_01"] = 255
 
             # decrease black till 0
-            elif not (self.counters["anim_cinematic_01"] - self.frametime * 340 <= 0):
+            elif not (self.counters["anim_cinematic_01"] <= 0):
                 self.counters["anim_cinematic_01"] -= self.frametime * 340
+                if self.counters["anim_cinematic_01"] < 0:
+                    self.counters["anim_cinematic_01"] = 0
 
             # change to state 0
-            else:
+            elif self.counters["anim_cinematic_01"] - self.frametime * 340 <= 0:
                 self.counters["anim_cinematic_01"] = 0
                 self.anim_states["anim_cinematic"] = 0
                 self.counters["anim_cinematic_00"] = 0
@@ -356,10 +383,15 @@ class mainMenu(Level):
                                         (self.title.get_size()[0] * 2, self.title.get_size()[1] * 2)).convert_alpha()
         self.background = pg.image.load('assets/textures/menu/background.png').convert()
         self.background = pg.transform.scale(self.background, display.get_size()).convert()
+        pg.mixer.music.load("assets/sounds/shop_start.wav")
+        pg.mixer.music.play(1)
 
     def game(self):
         global isDebug
-        mouse_pos = pg.mouse.get_pos()
+        mouse_pos = pg.mouse.get_pos()  #
+        if not pg.mixer.music.get_busy():
+            pg.mixer.music.load("assets/sounds/shop_loop.wav")
+            pg.mixer.music.play(-1)
 
         for e in pg.event.get():
             if e.type == pg.QUIT:
@@ -596,14 +628,6 @@ class Level_00(Level):
     def __init__(self):
         Level.__init__(self)
 
-        # setup camera
-        self.camera_pos = [0, 0]
-        self.camera_speed = 250
-        if ASPECT_RATIO == "1:1":
-            self.camera_zoom = MAP_PIX / display.get_size()[1]
-        elif ASPECT_RATIO == "16:9":
-            self.camera_zoom = MAP_PIX / (display.get_size()[1] * (16 / 9))
-
         self.map = {
             "16, 16":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
@@ -652,11 +676,13 @@ class Level_00(Level):
         # scale map_surface (keep it seperate so we can resize it at all times)
         # if check to keep aspect ratio
         # (map is a square, not a rectangle, so keep it as one)
-        self.scaled_map = scale_map(self.map_surface, self.camera_zoom)
+        self.scaled_map = scale_map(self.map_surface, MAP_PIX / (display.get_size()[1] * ASPC_MULT))
 
         # set cam_pos to center of the map.
-        self.camera_pos[0] = -self.scaled_map.get_size()[0] / 2
-        self.camera_pos[1] = -self.scaled_map.get_size()[1] / 2
+        self.camera_pos = vec()
+        self.camera_speed = 250
+        self.camera_pos.x = -self.scaled_map.get_size()[0] / 2 + (128 * (ASPC_MULT - 1))
+        self.camera_pos.y = -self.scaled_map.get_size()[1] / 2
 
         # list of buttons
         self.btn_lst = \
@@ -665,30 +691,35 @@ class Level_00(Level):
         self.btn_lst[0].isVisible = False
         self.selected_btn = None
 
-        self.player = Player(self.scaled_map.get_size()[0] / 2 + 32*4, self.scaled_map.get_size()[1] / 2 + 32*4)
+        self.player = Player(
+            self.scaled_map.get_size()[0] / 2 + 32 * 4 - self.scaled_map.get_size()[0] / 2 + (128 * (ASPC_MULT - 1)),
+            self.scaled_map.get_size()[1] / 2 + 32 * 4 - self.scaled_map.get_size()[1] / 2)
 
         # mini map
         self.Minimap = Minimap(self)
         self.show_minimap = False
 
-        self.anim_states["anim_cinematic"] = 1
+        self.counters["anim_cinematic_01"] = 255
+        self.anim_states["anim_cinematic"] = 2  # set animation state to 1. (staying black, then fade)
 
     def game(self):
         global isDebug
-        self.calculatedelta()
         mouse_pos = pg.mouse.get_pos()
         keys = pg.key.get_pressed()
 
         if round(self.frametime, 0) == 0:
 
-            if keys[pg.K_w]:
-                self.camera_pos[1] += self.frametime * self.camera_speed
-            if keys[pg.K_s]:
-                self.camera_pos[1] -= self.frametime * self.camera_speed
-            if keys[pg.K_a]:
-                self.camera_pos[0] += self.frametime * self.camera_speed
-            if keys[pg.K_d]:
-                self.camera_pos[0] -= self.frametime * self.camera_speed
+            if keys[CONTROLS["move_up"]]:
+                self.camera_pos.y += self.frametime * self.camera_speed
+            elif keys[CONTROLS["move_down"]]:
+                self.camera_pos.y -= self.frametime * self.camera_speed
+            elif keys[CONTROLS["move_right"]]:
+                self.camera_pos.x -= self.frametime * self.camera_speed
+            elif keys[CONTROLS["move_left"]]:
+                self.camera_pos.x += self.frametime * self.camera_speed
+
+            self.player.move_p()
+            self.player.update_p(keys, self.frametime)
 
             for e in pg.event.get():
                 if e.type == pg.QUIT:
@@ -777,7 +808,7 @@ class Level_00(Level):
 
             display.blit(self.scaled_map, self.camera_pos)
 
-            self.scaled_map.blit(self.player.image, self.player.pos)
+            display.blit(self.player.image, self.player.pos)
             if self.show_minimap:
                 display.blit(self.Minimap.surface, (display.get_size()[0] - 64, 0))
 
@@ -787,6 +818,8 @@ class Level_00(Level):
             if isDebug:
                 self.drawDebug(Colors.WHITE)
 
-        self.cinematic_change(0.3)
+            self.cinematic_change()
+
         pg.display.flip()
         clock.tick(MAX_FPS)
+        self.calculatedelta()
