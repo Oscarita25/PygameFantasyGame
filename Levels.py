@@ -49,10 +49,10 @@ CONTROLS = None
 
 ''' DEFAULT SETTINGS '''
 DEF_CONTROLS = {
-    "move_up": pg.K_UP,
-    "move_down": pg.K_DOWN,
-    "move_right": pg.K_RIGHT,
-    "move_left": pg.K_LEFT
+    "move_up": pg.K_w,
+    "move_down": pg.K_s,
+    "move_right": pg.K_d,
+    "move_left": pg.K_a
 }
 
 ''' Aspect Ratio Muliplicator '''
@@ -68,7 +68,6 @@ data = {
 ''' Tileset '''
 tiles = {
 }
-
 
 def init(surface, clck):
     global display
@@ -237,23 +236,30 @@ class Player(pg.sprite.Sprite):
         # Position and Direction
         self.pos = vec(x, y)
         self.vel = vec(0, 0)
-        self.speed = 32
+        self.speed = 64
         self.direction = "DOWN"
 
     def move_p(self):
-        self.pos.update(self.pos + self.vel)
+        pass
+        #self.pos.update(self.pos + self.vel)
 
     def update_p(self, keys, delta):
         if keys[CONTROLS["move_up"]]:
-            self.vel = vec(0, -self.speed * delta)
+            self.direction = "UP"
+            self.vel.y = -self.speed * delta
         elif keys[CONTROLS["move_down"]]:
-            self.vel = vec(0, self.speed * delta)
+            self.direction = "DOWN"
+            self.vel.y = self.speed * delta
         elif keys[CONTROLS["move_right"]]:
-            self.vel = vec(self.speed * delta, 0)
+            self.direction = "RIGHT"
+            self.vel.x = self.speed * delta
         elif keys[CONTROLS["move_left"]]:
-            self.vel = vec(-self.speed * delta, 0)
+            self.direction = "LEFT"
+            self.vel.x = -self.speed * delta
         else:
             self.vel = vec(0, 0)
+
+        self.pos.update(self.pos + self.vel)
 
     def jump_p(self):
         pass
@@ -383,15 +389,10 @@ class mainMenu(Level):
                                         (self.title.get_size()[0] * 2, self.title.get_size()[1] * 2)).convert_alpha()
         self.background = pg.image.load('assets/textures/menu/background.png').convert()
         self.background = pg.transform.scale(self.background, display.get_size()).convert()
-        pg.mixer.music.load("assets/sounds/shop_start.wav")
-        pg.mixer.music.play(1)
 
     def game(self):
         global isDebug
-        mouse_pos = pg.mouse.get_pos()  #
-        if not pg.mixer.music.get_busy():
-            pg.mixer.music.load("assets/sounds/shop_loop.wav")
-            pg.mixer.music.play(-1)
+        mouse_pos = pg.mouse.get_pos()
 
         for e in pg.event.get():
             if e.type == pg.QUIT:
@@ -455,7 +456,6 @@ class mainMenu(Level):
                 if e.button == 1:
                     if self.btn_lst[0].isHover:
                         self.anim_states["anim_cinematic"] = 1
-
                     if self.btn_lst[1].isHover:
                         self.next_scene(optionMenu())
                     if self.btn_lst[2].isHover:
@@ -649,6 +649,66 @@ class Level_00(Level):
                  [1, 0, 1, 0, 0, 1, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
+            "11, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "10, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "9, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "8, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "7, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "6, 5":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
             "5, 5":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -680,7 +740,8 @@ class Level_00(Level):
 
         # set cam_pos to center of the map.
         self.camera_pos = vec()
-        self.camera_speed = 250
+        self.camera_speed = 2
+        self.camera_dir = vec(0, 0)
         self.camera_pos.x = -self.scaled_map.get_size()[0] / 2 + (128 * (ASPC_MULT - 1))
         self.camera_pos.y = -self.scaled_map.get_size()[1] / 2
 
@@ -699,6 +760,8 @@ class Level_00(Level):
         self.Minimap = Minimap(self)
         self.show_minimap = False
 
+        self.controls_locked = False
+
         self.counters["anim_cinematic_01"] = 255
         self.anim_states["anim_cinematic"] = 2  # set animation state to 1. (staying black, then fade)
 
@@ -709,17 +772,39 @@ class Level_00(Level):
 
         if round(self.frametime, 0) == 0:
 
-            if keys[CONTROLS["move_up"]]:
-                self.camera_pos.y += self.frametime * self.camera_speed
-            elif keys[CONTROLS["move_down"]]:
-                self.camera_pos.y -= self.frametime * self.camera_speed
-            elif keys[CONTROLS["move_right"]]:
-                self.camera_pos.x -= self.frametime * self.camera_speed
-            elif keys[CONTROLS["move_left"]]:
-                self.camera_pos.x += self.frametime * self.camera_speed
+            if not self.controls_locked:
+                if keys[CONTROLS["move_up"]]:
+                    self.camera_dir.y += (self.frametime * self.camera_speed) * 12
+                    if self.camera_dir.y > self.camera_speed:
+                        self.camera_pos.y += self.camera_speed
+                        self.camera_dir.y = 0
 
-            self.player.move_p()
-            self.player.update_p(keys, self.frametime)
+                elif keys[CONTROLS["move_down"]]:
+                    self.camera_dir.y -= (self.frametime * self.camera_speed) * 12
+                    if self.camera_dir.y < -self.camera_speed:
+                        self.camera_pos.y -= self.camera_speed
+                        self.camera_dir.y = 0
+
+                elif keys[CONTROLS["move_right"]]:
+                    self.camera_dir.x -= (self.frametime * self.camera_speed) * 12
+                    if self.camera_dir.x < -self.camera_speed:
+                        self.camera_pos.x -= self.camera_speed
+                        self.camera_dir.x = 0
+
+                elif keys[CONTROLS["move_left"]]:
+                    self.camera_dir.x += (self.frametime * self.camera_speed) * 12
+                    if self.camera_dir.x > self.camera_speed:
+                        self.camera_pos.x += self.camera_speed
+                        self.camera_dir.x = 0
+
+                else:
+                    # if nothing is done reset.
+                    # (if you don't hold a key you won't move)
+                    self.camera_dir.x = 0
+                    self.camera_dir.y = 0
+
+                #self.player.move_p()
+                #self.player.update_p(keys, self.frametime)
 
             for e in pg.event.get():
                 if e.type == pg.QUIT:
@@ -769,8 +854,11 @@ class Level_00(Level):
                     if e.key == pg.K_ESCAPE:
                         if self.btn_lst[0].isVisible:
                             self.btn_lst[0].isVisible = False
+                            self.controls_locked = False
                         else:
                             self.btn_lst[0].isVisible = True
+                            self.controls_locked = True
+
                     if e.key == pg.K_m:
                         if self.show_minimap:
                             self.show_minimap = False
@@ -811,6 +899,13 @@ class Level_00(Level):
             display.blit(self.player.image, self.player.pos)
             if self.show_minimap:
                 display.blit(self.Minimap.surface, (display.get_size()[0] - 64, 0))
+
+            if self.controls_locked:
+                s = pg.Surface(display.get_size())
+                s.fill(Colors.BLACK)
+                s.set_alpha(192)
+                display.blit(s, (0, 0))
+                del s
 
             for button in self.btn_lst:
                 button.draw(display)
