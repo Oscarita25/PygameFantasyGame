@@ -69,26 +69,44 @@ data = {
 tiles = {
 }
 
+sprite_groups = {
+}
+
+
 def init(surface, clck):
     global display
     global clock
     global tiles
     global CONTROLS
     global DEF_CONTROLS
+    global sprite_groups
 
     display = surface
     clock = clck
 
     tiles = {
-        0: pg.image.load("assets/textures/tiles/grass.png").convert(),
-        1: pg.image.load("assets/textures/tiles/stone.png").convert()
+        0: "assets/textures/tiles/grass.png,visible_sprites",
+        1: "assets/textures/tiles/stone.png,obstacle_sprites"
     }
 
     if CONTROLS is None:
         CONTROLS = DEF_CONTROLS
 
 
+def clear_sprites():
+    global sprite_groups
+
+    sprite_groups = {
+        "all_sprites": pygame.sprite.Group(),
+        "visible_sprites": CameraSprites(),
+        "obstacle_sprites": CameraSprites()
+    }
+
+
 def gen_mapsurf(map_dict):
+    global sprite_groups
+    clear_sprites()
+
     '''
     # example dictonary
     map_dict = {
@@ -109,10 +127,6 @@ def gen_mapsurf(map_dict):
 
     _rows = 0
     _elements = 0
-    # create a map surface (a rectangle) which is the maximum size of the map
-    # CHUNKSIZE * TILESIZE = Pixels of 1 Chunk
-    # (CHUNKSIZE * TILESIZE) * MAPSIZE = Pixels of 1 MAP
-    map_surface = pg.Surface((MAP_PIX, MAP_PIX))
 
     # go trough every Chunk and add Tiles to map
     # x chunk axis
@@ -124,8 +138,11 @@ def gen_mapsurf(map_dict):
                     # go trough every row in Chunk
                     for element in row:
                         # add tile to map for every     element.
-                        map_surface.blit(tiles[element], ((TILESIZE * _elements) + (CHUNKSIZE * TILESIZE) * x,
-                                                          (TILESIZE * _rows) + (CHUNKSIZE * TILESIZE) * y))
+                        _path, _group = tiles[element].split(",")
+                        Tile(((TILESIZE * _elements) + (CHUNKSIZE * TILESIZE) * x,
+                              (TILESIZE * _rows) + (CHUNKSIZE * TILESIZE) * y), [sprite_groups[_group]], _path)
+                        # map_surface.blit(tiles[element], ((TILESIZE * _elements) + (CHUNKSIZE * TILESIZE) * x,
+                        #                                  (TILESIZE * _rows) + (CHUNKSIZE * TILESIZE) * y))
                         _elements += 1
                         # for element in row -> END
                     _elements = 0
@@ -134,8 +151,6 @@ def gen_mapsurf(map_dict):
             _rows = 0
             # for y in range(MAPSIZE) -> END
     # for x in range(MAPSIZE) -> END
-
-    return map_surface.convert()
 
 
 def scale_map(surface, zoom):
@@ -204,6 +219,37 @@ def change_fullscreen():
     pg.event.post(pg.event.Event(pg.VIDEORESIZE))
 
 
+class CameraSprites(pg.sprite.Group):
+    def __init__(self):
+        super().__init__()
+        self.display_surface = pg.display.get_surface()
+        self.half_width = self.display_surface.get_size()[0] // 2
+        self.half_height = self.display_surface.get_size()[1] // 2
+        self.offset = vec()
+
+    def custom_draw(self, player):
+        global TILESIZE
+
+        self.offset.x = player.x
+        self.offset.y = player.y
+
+        for sprite in self.sprites():
+            # if 0 < sprite.rect.topleft[0] - self.offset.x + TILESIZE < pg.display.get_surface().get_size()[0] + TILESIZE:
+            # if 0 - TILESIZE< sprite.rect.topleft[1] - self.offset.y < pg.display.get_surface().get_size()[1] + TILESIZE:
+            offset_rect = sprite.rect.topleft - self.offset
+            self.display_surface.blit(sprite.image, offset_rect)
+
+
+class Tile(pg.sprite.Sprite):
+    def __init__(self, pos, groups, image_path, transparency=False):
+        super().__init__(groups)
+        if transparency:
+            self.image = pg.image.load(image_path).convert_alpha()
+        else:
+            self.image = pg.image.load(image_path).convert()
+        self.rect = self.image.get_rect(topleft=pos)
+
+
 class Minimap:
     def __init__(self, game):
         self.game = game
@@ -212,59 +258,108 @@ class Minimap:
         self.surface.fill((0, 0, 0))
 
         self.cam_surf = pg.Surface((CHUNKSIZE * TILESIZE, CHUNKSIZE * TILESIZE))
-        self.cam_surf.fill((255, 0, 0))
-        self.cam_surf.set_alpha(128)
+        self.cam_surf.fill((0, 255, 255))
+        self.cam_surf.set_alpha(196)
         self.cam_surf = pg.transform.scale(self.cam_surf, ((CHUNKSIZE * TILESIZE) / 128, (CHUNKSIZE * TILESIZE) / 128))
-        self.image = pg.transform.scale(self.game.map_surface, (64, 64))
+        # self.image = pg.transform.scale(self.game.map_surface, (64, 64))
 
-    def update(self):
-        # self.comb_surf.fill((0, 0, 0))
-        self.surface.blit(self.image, (0, 0))
+    def draw(self):
+        global display
+        self.surface.fill((0, 0, 0))
+        for _sprites in sprite_groups["visible_sprites"]:
+            pg.draw.rect(self.surface, (255, 255, 255), (_sprites.rect.x // 128, _sprites.rect.y // 128, 1, 1))
+        # for _sprites in sprite_groups["obstacle_sprites"]:
+        #   pg.draw.rect(self.surface, (255, 255, 255), (_sprites.rect.x // 128, _sprites.rect.y // 128, 1, 1))
+
         self.surface.blit(self.cam_surf,
-                          ((abs(self.game.camera_pos[0]) / 128),
-                           (abs(self.game.camera_pos[1]) / 128)))
-        pg.draw.rect(self.surface, (255, 255, 255), (0, 0, 64, 64), 2)
+                          ((abs(self.game.player.pos.x) // 128),
+                           (abs(self.game.player.pos.y) // 128)))
+        display.blit(self.surface, (display.get_size()[0] - 65, 1))
+        pg.draw.rect(display, (255, 255, 255), (display.get_size()[0] - 66, 0, 65, 65), 1)
 
 
 class Player(pg.sprite.Sprite):
 
-    def __init__(self, x, y):
+    def __init__(self):
+        global ASPC_MULT
+
         super().__init__()
         self.image = pygame.image.load("assets/textures/Player_Sprite.png").convert_alpha()
         self.rect = self.image.get_rect()
 
         # Position and Direction
-        self.pos = vec(x, y)
-        self.vel = vec(0, 0)
-        self.speed = 64
+        self.rect.x = (pygame.display.get_surface().get_size()[0] // 2)
+        self.rect.y = pygame.display.get_surface().get_size()[1] // 2
+
+        # self.camera_pos.x = (128 * (ASPC_MULT - 1))
+
+        self.pos = vec(0, 0)
+        self.step = 8
+        self.speed = 10
+        self.dir_counter = 0
+        self.dir = vec(0, 0)
+
         self.direction = "DOWN"
 
-    def move_p(self):
-        pass
-        #self.pos.update(self.pos + self.vel)
+    def move(self, frametime):
+        global sprite_groups
+        keys = pg.key.get_pressed()
 
-    def update_p(self, keys, delta):
         if keys[CONTROLS["move_up"]]:
             self.direction = "UP"
-            self.vel.y = -self.speed * delta
+            self.dir.y -= (frametime * self.step) * self.speed
+            if self.dir.y < -self.step:
+                self.pos.y -= self.step
+                self.dir.y = 0
+
         elif keys[CONTROLS["move_down"]]:
             self.direction = "DOWN"
-            self.vel.y = self.speed * delta
+            self.dir.y += (frametime * self.step) * self.speed
+            if self.dir.y > self.step:
+                self.pos.y += self.step
+                self.dir.y = 0
+
         elif keys[CONTROLS["move_right"]]:
             self.direction = "RIGHT"
-            self.vel.x = self.speed * delta
+            self.dir.x += (frametime * self.step) * self.speed
+            if self.dir.x > self.step:
+                self.pos.x += self.step
+                self.dir.x = 0
+
         elif keys[CONTROLS["move_left"]]:
             self.direction = "LEFT"
-            self.vel.x = -self.speed * delta
+            self.dir.x -= (frametime * self.step) * self.speed
+            if self.dir.x < -self.step:
+                self.pos.x -= self.step
+                self.dir.x = 0
         else:
-            self.vel = vec(0, 0)
+            # if nothing is done reset.
+            # (if you don't hold a key you won't move)
+            self.dir.x = 0
+            self.dir.y = 0
 
-        self.pos.update(self.pos + self.vel)
+    def collision(self):
+        collision_rect = self.rect.copy()
+        collision_rect.x += self.pos.x
+        collision_rect.y += self.pos.y
+        for _sprite in sprite_groups["obstacle_sprites"]:
+            if _sprite.rect.colliderect(collision_rect):
+                if self.direction == "UP":
+                    self.pos.y = _sprite.rect.bottom - self.rect.y
+                if self.direction == "DOWN":
+                    self.pos.y = _sprite.rect.top - self.rect.y - self.rect.height
+                if self.direction == "RIGHT":
+                    self.pos.x = _sprite.rect.left - self.rect.x - self.rect.width
+                if self.direction == "LEFT":
+                    self.pos.x = _sprite.rect.right - self.rect.x
 
-    def jump_p(self):
+                self.dir.y = 0
+                self.dir.x = 0
+
+    def draw(self):
         pass
 
-    def attack_p(self):
+    def attack(self):
         pass
 
 
@@ -354,17 +449,16 @@ class Level:
                 self.anim_states["anim_cinematic"] = 0
                 self.counters["anim_cinematic_00"] = 0
 
-        s = pg.Surface(display.get_size())
-        s.fill(Colors.BLACK)
-        s.set_alpha(self.counters["anim_cinematic_01"])
-        display.blit(s, (0, 0))
+        _anim_surf = pg.Surface(display.get_size())
+        _anim_surf.fill(Colors.BLACK)
+        _anim_surf.set_alpha(self.counters["anim_cinematic_01"])
+        display.blit(_anim_surf, (0, 0))
 
     def game(self):
         raise Exception('[ERROR] Not Overwriting "Level" ')
 
     def next_scene(self, next_scene):
         self.next = next_scene
-        del self
 
     def terminate(self):
         self.next_scene(None)
@@ -629,7 +723,7 @@ class Level_00(Level):
         Level.__init__(self)
 
         self.map = {
-            "16, 16":
+            "0, 0":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -639,17 +733,37 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 0, 0, 1, 1, 1]],
 
-            "16, 17":
-                [[1, 1, 0, 0, 0, 0, 1, 1],
-                 [1, 0, 1, 1, 1, 1, 0, 1],
+            "1, 0":
+                [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 1, 0, 0, 1, 0, 1],
-                 [1, 0, 1, 1, 1, 1, 0, 0],
-                 [1, 0, 1, 1, 1, 1, 0, 0],
+                 [0, 0, 1, 1, 1, 1, 0, 1],
+                 [0, 0, 1, 1, 1, 1, 0, 1],
                  [1, 0, 1, 0, 0, 1, 0, 1],
-                 [1, 0, 1, 0, 0, 1, 0, 1],
+                 [1, 0, 1, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 0, 0, 1, 1, 1]],
+
+            "0, 1":
+                [[1, 1, 1, 0, 0, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 0],
+                 [1, 0, 0, 0, 0, 0, 0, 0],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
-            "11, 5":
+            "1, 1":
+                [[1, 1, 1, 0, 0, 1, 1, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [0, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 0, 0, 0, 0, 0, 0, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]],
+
+            "2, 1":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -659,7 +773,7 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
-            "10, 5":
+            "2, 2":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -669,7 +783,7 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
-            "9, 5":
+            "2, 3":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -679,7 +793,7 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
-            "8, 5":
+            "3, 3":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -689,7 +803,7 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
 
-            "7, 5":
+            "4, 3":
                 [[1, 1, 1, 1, 1, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -698,27 +812,7 @@ class Level_00(Level):
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 1, 1, 1, 1, 1, 1, 1]],
-
-            "6, 5":
-                [[1, 1, 1, 1, 1, 1, 1, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [0, 0, 0, 0, 0, 0, 0, 1],
-                 [0, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 1, 1, 1, 1, 1, 1, 1]],
-
-            "5, 5":
-                [[1, 1, 1, 1, 1, 1, 1, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [0, 0, 0, 0, 0, 0, 0, 1],
-                 [0, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 0, 0, 0, 0, 0, 0, 1],
-                 [1, 1, 1, 1, 1, 1, 1, 1]],
-            "5, 4":
+            "4, 4":
                 [[1, 1, 1, 0, 0, 1, 1, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
                  [1, 0, 0, 0, 0, 0, 0, 1],
@@ -731,19 +825,7 @@ class Level_00(Level):
         }
 
         # generate map
-        self.map_surface = gen_mapsurf(self.map)
-
-        # scale map_surface (keep it seperate so we can resize it at all times)
-        # if check to keep aspect ratio
-        # (map is a square, not a rectangle, so keep it as one)
-        self.scaled_map = scale_map(self.map_surface, MAP_PIX / (display.get_size()[1] * ASPC_MULT))
-
-        # set cam_pos to center of the map.
-        self.camera_pos = vec()
-        self.camera_speed = 2
-        self.camera_dir = vec(0, 0)
-        self.camera_pos.x = -self.scaled_map.get_size()[0] / 2 + (128 * (ASPC_MULT - 1))
-        self.camera_pos.y = -self.scaled_map.get_size()[1] / 2
+        gen_mapsurf(self.map)
 
         # list of buttons
         self.btn_lst = \
@@ -752,10 +834,9 @@ class Level_00(Level):
         self.btn_lst[0].isVisible = False
         self.selected_btn = None
 
-        self.player = Player(
-            self.scaled_map.get_size()[0] / 2 + 32 * 4 - self.scaled_map.get_size()[0] / 2 + (128 * (ASPC_MULT - 1)),
-            self.scaled_map.get_size()[1] / 2 + 32 * 4 - self.scaled_map.get_size()[1] / 2)
+        self.player = Player()
 
+        # TODO reimplement minimap
         # mini map
         self.Minimap = Minimap(self)
         self.show_minimap = False
@@ -766,45 +847,15 @@ class Level_00(Level):
         self.anim_states["anim_cinematic"] = 2  # set animation state to 1. (staying black, then fade)
 
     def game(self):
-        global isDebug
+        global isDebug, sprite_groups
         mouse_pos = pg.mouse.get_pos()
-        keys = pg.key.get_pressed()
 
         if round(self.frametime, 0) == 0:
-
             if not self.controls_locked:
-                if keys[CONTROLS["move_up"]]:
-                    self.camera_dir.y += (self.frametime * self.camera_speed) * 12
-                    if self.camera_dir.y > self.camera_speed:
-                        self.camera_pos.y += self.camera_speed
-                        self.camera_dir.y = 0
+                self.player.move(self.frametime)
+                self.player.collision()
 
-                elif keys[CONTROLS["move_down"]]:
-                    self.camera_dir.y -= (self.frametime * self.camera_speed) * 12
-                    if self.camera_dir.y < -self.camera_speed:
-                        self.camera_pos.y -= self.camera_speed
-                        self.camera_dir.y = 0
-
-                elif keys[CONTROLS["move_right"]]:
-                    self.camera_dir.x -= (self.frametime * self.camera_speed) * 12
-                    if self.camera_dir.x < -self.camera_speed:
-                        self.camera_pos.x -= self.camera_speed
-                        self.camera_dir.x = 0
-
-                elif keys[CONTROLS["move_left"]]:
-                    self.camera_dir.x += (self.frametime * self.camera_speed) * 12
-                    if self.camera_dir.x > self.camera_speed:
-                        self.camera_pos.x += self.camera_speed
-                        self.camera_dir.x = 0
-
-                else:
-                    # if nothing is done reset.
-                    # (if you don't hold a key you won't move)
-                    self.camera_dir.x = 0
-                    self.camera_dir.y = 0
-
-                #self.player.move_p()
-                #self.player.update_p(keys, self.frametime)
+                # self.player.update_p(keys, self.frametime)
 
             for e in pg.event.get():
                 if e.type == pg.QUIT:
@@ -887,18 +938,17 @@ class Level_00(Level):
                     for button in self.btn_lst:
                         button.x = display.get_size()[0] / 2 - button.width / 2
 
-            self.Minimap.update()
-
             for button in self.btn_lst:
                 button.Hover(mouse_pos, Colors.MAGENTA)
 
             display.fill(Colors.WHITE)
 
-            display.blit(self.scaled_map, self.camera_pos)
-
-            display.blit(self.player.image, self.player.pos)
+            # display.blit(self.scaled_map, self.camera_pos)
+            sprite_groups["visible_sprites"].custom_draw(self.player.pos)
+            sprite_groups["obstacle_sprites"].custom_draw(self.player.pos)
+            display.blit(self.player.image, self.player.rect)
             if self.show_minimap:
-                display.blit(self.Minimap.surface, (display.get_size()[0] - 64, 0))
+                self.Minimap.draw()
 
             if self.controls_locked:
                 s = pg.Surface(display.get_size())
